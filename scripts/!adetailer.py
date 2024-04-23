@@ -35,6 +35,7 @@ from adetailer import (
     get_models,
     mediapipe_predict,
     ultralytics_predict,
+    bbox_inpaint,
 )
 from adetailer.args import BBOX_SORTBY, SCRIPT_DEFAULT, ADetailerArgs, SkipImg2ImgOrig
 from adetailer.common import PredictOutput, ensure_pil_image, safe_mkdir
@@ -693,6 +694,38 @@ class AfterDetailerScript(scripts.Script):
         extra_params = self.extra_params(arg_list)
         p.extra_generation_params.update(extra_params)
 
+    def process_bounding_boxes(self, user_input):
+
+        if len(user_input)!=0:
+  # Split the input string by commas, handling potential extra commas
+            boxes = user_input.strip().split(";")
+  # Validate individual bounding boxes
+            valid_boxes = []
+        
+            for box in boxes:
+    # Split the box string by commas, handling spaces around them
+                box_values = [x.strip() for x in box.split(",")]
+
+    # Check for unwanted characters (adjust regex if needed)
+                if not all(re.match(r"^\d+$", val) for val in box_values):
+                    raise ValueError("Invalid input: Unwanted characters found in bounding boxes.")
+
+    # Check for correct length
+                if len(box_values) != 4:
+                    raise ValueError(f"Invalid input: List is not correct length (expected 4 elements, got {len(box_values)}).")
+
+    # Convert to integers (optional, adjust as needed)
+                int_box = [float(val) for val in box_values]
+
+                valid_boxes.append(int_box)
+
+            return valid_boxes
+        else:
+            return []
+
+
+
+
     def _postprocess_image_inner(
         self, p, pp, args: ADetailerArgs, *, n: int = 0
     ) -> bool:
@@ -713,19 +746,31 @@ class AfterDetailerScript(scripts.Script):
         ad_prompts, ad_negatives = self.get_prompt(p, args)
 
         is_mediapipe = args.ad_model.lower().startswith("mediapipe")
-
         kwargs = {}
-        if is_mediapipe:
-            predictor = mediapipe_predict
-            ad_model = args.ad_model
-        else:
-            predictor = ultralytics_predict
-            ad_model = self.get_ad_model(args.ad_model)
+        if args.bounding_boxes != "" :
+            bounding_boxes_list = self.process_bounding_boxes(args.bounding_boxes)
+
+            inpainter = bbox_inpaint
+            ad_model = self.get_ad_model("hand_yolov8n.pt")
             kwargs["device"] = self.ultralytics_device
             kwargs["classes"] = args.ad_model_classes
+            with change_torch_load():
+                pred = inpainter(bounding_boxes_list, pp.image)
 
-        with change_torch_load():
-            pred = predictor(ad_model, pp.image, args.ad_confidence, **kwargs)
+        else :
+        
+
+            if is_mediapipe:
+                predictor = mediapipe_predict
+                ad_model = args.ad_model
+            else:
+                predictor = ultralytics_predict
+                ad_model = self.get_ad_model(args.ad_model)
+                kwargs["device"] = self.ultralytics_device
+                kwargs["classes"] = args.ad_model_classes
+
+            with change_torch_load():
+                pred = predictor(ad_model, pp.image, args.ad_confidence, **kwargs)
 
         if pred.preview is None:
             print(

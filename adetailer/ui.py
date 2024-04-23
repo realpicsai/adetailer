@@ -174,9 +174,9 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
     with gr.Group():
         with gr.Row():
             model_choices = (
-                [*webui_info.ad_model_list, "None"]
+                [*webui_info.ad_model_list,"gdino", "None"]
                 if n == 0
-                else ["None", *webui_info.ad_model_list]
+                else ["None","gdino", *webui_info.ad_model_list]
             )
 
             w.ad_model = gr.Dropdown(
@@ -248,6 +248,15 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
 
     with gr.Group():
         controlnet(w, n, is_img2img)
+    with gr.Group():
+        with gr.Row():
+            w.bounding_boxes = gr.Textbox(  
+                label="Bounding Boxes" + suffix(n),
+                show_label=False,
+                lines=2,
+                placeholder="Enter bounding boxes as individual values (e.g., 10,20,30,40; 50,60,70,80).or leave empty",
+                elem_id=eid("ad_bounding_boxes"),
+            )
 
     state = gr.State(lambda: state_init(w))
 
@@ -263,7 +272,6 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
     )
 
     infotext_fields = [(getattr(w, attr), name + suffix(n)) for attr, name in ALL_ARGS]
-
     return state, infotext_fields
 
 

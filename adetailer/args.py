@@ -94,6 +94,7 @@ class ADetailerArgs(BaseModel, extra=Extra.forbid):
     ad_controlnet_guidance_start: confloat(ge=0.0, le=1.0) = 0.0
     ad_controlnet_guidance_end: confloat(ge=0.0, le=1.0) = 1.0
     is_api: bool = True
+    bounding_boxes="None"
 
     @validator("is_api", pre=True)
     def is_api_validator(cls, v: Any):  # noqa: N805
@@ -194,6 +195,7 @@ class ADetailerArgs(BaseModel, extra=Extra.forbid):
         ppop("ADetailer ControlNet weight", cond=1.0)
         ppop("ADetailer ControlNet guidance start", cond=0.0)
         ppop("ADetailer ControlNet guidance end", cond=1.0)
+        ppop("Bounding of inpainting area")
 
         if suffix:
             p = {k + suffix: v for k, v in p.items()}
@@ -242,6 +244,7 @@ _all_args = [
     ("ad_controlnet_weight", "ADetailer ControlNet weight"),
     ("ad_controlnet_guidance_start", "ADetailer ControlNet guidance start"),
     ("ad_controlnet_guidance_end", "ADetailer ControlNet guidance end"),
+    ("bounding_boxes", "Bounding of inpainting area"),
 ]
 
 _args = [Arg(*args) for args in _all_args]
